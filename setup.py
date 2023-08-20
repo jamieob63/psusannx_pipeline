@@ -20,5 +20,9 @@ setup(
         "scikit-learn",
         "category-encoders>=2.2.2"
     ],
-    python_requires="==3.*"
+    python_requires="==3.*",
+    project_urls={
+        "Source Code": "https://github.com/jamieob63/psusannx_pipeline.git",
+        "Bug Tracker": "https://github.com/jamieob63/psusannx_pipeline.git/issues",
+    }
 )
