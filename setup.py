@@ -9,10 +9,11 @@ long_description = (current_dir / "README.md").read_text()
 setup(
     name="psusannx_pipeline",
     author="Jamie O'Brien",
+    author_email="jamieob63@gmail.com",
     description="A package containing classes to be used in the preprocessing data pipeline for the PSUSANNX project.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    version="0.1.7",
+    version="0.1.8",
     packages=find_packages(include=["psusannx_pipeline", "psusannx_pipeline.*"]),
     install_requires=[
         "numpy", 
