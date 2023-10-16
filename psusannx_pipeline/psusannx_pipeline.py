@@ -424,7 +424,7 @@ final_model_pipeline = Pipeline(steps = [
     
     ("Correct Negative Points", CorrectNegPoints()),
     
-    ("Bucket the Infrequent Formations", BucketFormations()),
+    ("Bucket the Infrequent Formations", BucketFormations(cutoff=250)),
     
     ("Get the Log Ratios of Some Features", GetLogRatios()),
     
