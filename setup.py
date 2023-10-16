@@ -13,7 +13,7 @@ setup(
     description="A package containing classes to be used in the preprocessing data pipeline for the PSUSANNX project.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    version="0.1.8",
+    version="0.1.10",
     packages=find_packages(include=["psusannx_pipeline", "psusannx_pipeline.*"]),
     install_requires=[
         "numpy", 

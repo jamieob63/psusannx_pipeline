@@ -1,11 +1,22 @@
-"""Create custom transformers used in the PSUSANNX data preprocessingpipeline"""
-
 from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.pipeline import Pipeline
 import numpy as np 
 import pandas as pd
 from category_encoders.cat_boost import CatBoostEncoder
 from sklearn.preprocessing import StandardScaler
+
+
+class ColumnSelector(BaseEstimator, TransformerMixin):
+    """Select certain columns from a dataframe for preprocessing"""
+
+    def __init__(self, columns=[]):
+        self.columns = columns
+        
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X, y=None):
+        return X[self.columns]
 
 
 class CorrectNegPoints(TransformerMixin, BaseEstimator):
@@ -253,9 +264,6 @@ class CustomScaler(TransformerMixin, BaseEstimator):
 
         # Standardise the columns but keep the dataframe object
         X_[self.feature_list] = pd.DataFrame(self.scaler.transform(X_[self.feature_list]), columns=self.feature_list)
-        
-        # Scale the game week column as it will always be divided by 38 week/matches
-        X_["Game_week"]  = X_.Game_week / 38
 
         return X_
     
@@ -274,25 +282,82 @@ class FillNA(TransformerMixin, BaseEstimator):
         # Create a copy of the input dataframe
         X_ = X.copy()
         
-        # Replace any of the negative points (deducted for going into administration)
+        # Replace any of the null values with 0
         X_ = X_.fillna(0)
         
         return X_
 
 
-# Set up a list of columns to drop when making predictions
-cols_to_drop = [
-    "Date", "Home_team", "Home_lineup", "Home_score", "Away_lineup", 
-    "Away_tea", "Away_score", "Home_pred", "Draw_pred", "Away_pred", 
-    "Home_team_played", "Away_team_played", "Home_xg", "Away_xg",
-    "Home_nn_prob", "Draw_nn_prob", "Away_nn_prob", "NN_prob_diff"
+########## LINEUP MODEL PIPELINE ##########
+
+# Set up a list of columns to select for the lineup model pipeline
+lineup_model_cols = [
+    "Result", # Needed for catboost encoders but not for predictions
+    "Home_formation",
+    "Home_GK", 
+    "Home_LWB", "Home_LB", "Home_CB1", "Home_CB2", "Home_CB3", "Home_RB", "Home_RWB", 
+    "Home_CDM1", "Home_CDM2", "Home_LM", "Home_CM1", "Home_CM2", "Home_CM3", "Home_RM", "Home_CAM1", "Home_CAM2", "Home_CAM3", 
+    "Home_LW", "Home_ST1", "Home_ST2", "Home_RW",
+    "Home_sub_1", "Home_sub_2", "Home_sub_3", "Home_sub_4", "Home_sub_5", "Home_sub_6", "Home_sub_7", "Home_sub_8", "Home_sub_9",
+
+    "Away_formation",
+    "Away_GK", 
+    "Away_LWB", "Away_LB", "Away_CB1", "Away_CB2", "Away_CB3", "Away_RB", "Away_RWB", 
+    "Away_CDM1", "Away_CDM2", "Away_LM", "Away_CM1", "Away_CM2", "Away_CM3", "Away_RM", "Away_CAM1", "Away_CAM2", "Away_CAM3",
+    "Away_LW", "Away_ST1", "Away_ST2", "Away_RW",
+    "Away_sub_1", "Away_sub_2", "Away_sub_3", "Away_sub_4", "Away_sub_5", "Away_sub_6", "Away_sub_7", "Away_sub_8", "Away_sub_9"
 ]
 
+# Set up a list of columns to scale for the lineup model pipeline
+lineup_model_cols_to_scale = [
+    "Home_formation",
+    "Home_GK", 
+    "Home_LWB", "Home_LB", "Home_CB1", "Home_CB2", "Home_CB3", "Home_RB", "Home_RWB", 
+    "Home_CDM1", "Home_CDM2", "Home_LM", "Home_CM1", "Home_CM2", "Home_CM3", "Home_RM", "Home_CAM1", "Home_CAM2", "Home_CAM3", 
+    "Home_LW", "Home_ST1", "Home_ST2", "Home_RW",
+    "Home_sub_1", "Home_sub_2", "Home_sub_3", "Home_sub_4", "Home_sub_5", "Home_sub_6", "Home_sub_7", "Home_sub_8", "Home_sub_9",
 
-# Set up alist of columns to scale when preprocessing raw data
-cols_to_scale = [
+    "Away_formation",
+    "Away_GK", 
+    "Away_LWB", "Away_LB", "Away_CB1", "Away_CB2", "Away_CB3", "Away_RB", "Away_RWB", 
+    "Away_CDM1", "Away_CDM2", "Away_LM", "Away_CM1", "Away_CM2", "Away_CM3", "Away_RM", "Away_CAM1", "Away_CAM2", "Away_CAM3",
+    "Away_LW", "Away_ST1", "Away_ST2", "Away_RW",
+    "Away_sub_1", "Away_sub_2", "Away_sub_3", "Away_sub_4", "Away_sub_5", "Away_sub_6", "Away_sub_7", "Away_sub_8", "Away_sub_9"
+]
+
+# Setup a list of columns to drop from the data for the lineup model pipeline
+lineup_model_cols_to_drop = [
+    "Result"
+]
+
+# Create the preprocessing pipeline object for the lineup model
+lineup_model_pipeline = Pipeline(steps = [
+
+    ("Select the columns we want for the lineup model", ColumnSelector(lineup_model_cols)),
+    
+    ("Bucket the Infrequent Formations", BucketFormations(cutoff=100)),
+
+    ("Encode Formations", CatboostEncodeFormations()),
+
+    ("Drop features not used in modelling", DropFeatures(lineup_model_cols_to_drop)),
+
+    ("Standardize all columns", CustomScaler(lineup_model_cols_to_scale)),
+    
+    ("Fill in missing values with 0", FillNA())
+    
+])
+
+
+########## FINAL MODEL PIPELINE ##########
+
+# Set up a list of columns to select for the final model pipeline
+final_model_cols = [
     "Home_form", "Away_form",
     "Home_home_form", "Away_away_form",
+    "Home_rolling_form", "Away_rolling_form",
+    "Home_location_rolling_form", "Away_location_rolling_form",
+
+    "Home_team_played", "Away_team_played",
     "Home_league_pos", "Away_league_pos",
     "Home_team_wins", "Away_team_wins",
     "Home_team_draws", "Away_team_draws",
@@ -302,97 +367,60 @@ cols_to_scale = [
     "Home_team_goals_against", "Away_team_goals_against",
     "Home_avg_goals_against_il5g", "Away_avg_goals_against_il5g",
     "Home_team_points", "Away_team_points",
+
     "H2H_recent_home", "H2H_recent_draw", "H2H_recent_away", "H2H_recent_goal_diff",
     "H2H_exact_home", "H2H_exact_draw", "H2H_exact_away", "H2H_exact_goal_diff",
-    "Home_rolling_form", "Away_rolling_form",
-    "Home_location_rolling_form", "Away_location_rolling_form",
+    
     "Home_elo", "Away_elo",
     "Home_elo_prob", "Away_elo_prob",
     "Home_avg_xg", "Away_avg_xg",
     "Home_weighted_avg_xg", "Away_weighted_avg_xg",
-    "Home_GK",
-    "Home_LWB",
-    "Home_LB",
-    "Home_CB1",
-    "Home_CB2",
-    "Home_CB3",
-    "Home_RB",
-    "Home_RWB",
-    "Home_CDM1",
-    "Home_CDM2",
-    "Home_LM",
-    "Home_CM1",
-    "Home_CM2",
-    "Home_CM3",
-    "Home_RM",
-    "Home_CAM1",
-    "Home_CAM2",
-    "Home_CAM3",
-    "Home_LW",
-    "Home_ST1",
-    "Home_ST2",
-    "Home_RW",
-    "Home_sub_1",
-    "Home_sub_2",
-    "Home_sub_3",
-    "Home_sub_4",
-    "Home_sub_5",
-    "Home_sub_6",
-    "Home_sub_7",
-    "Home_sub_8",
-    "Home_sub_9",
-    "Away_GK",
-    "Away_LWB",
-    "Away_LB",
-    "Away_CB1",
-    "Away_CB2",
-    "Away_CB3",
-    "Away_RB",
-    "Away_RWB",
-    "Away_CDM1",
-    "Away_CDM2",
-    "Away_LM",
-    "Away_CM1",
-    "Away_CM2",
-    "Away_CM3",
-    "Away_RM",
-    "Away_CAM1",
-    "Away_CAM2",
-    "Away_CAM3",
-    "Away_LW",
-    "Away_ST1",
-    "Away_ST2",
-    "Away_RW",
-    "Away_sub_1",
-    "Away_sub_2",
-    "Away_sub_3",
-    "Away_sub_4",
-    "Away_sub_5",
-    "Away_sub_6",
-    "Away_sub_7",
-    "Away_sub_8",
-    "Away_sub_9",
+    
     "Home_odds",
     "Draw_odds",
     "Away_odds",
-    
-    "Log_Goals_for_ratio",
-    "Log_Goals_against_ratio", "Log_Wins_ratio", "Log_Losses_ratio",
-    "Log_Draws_ratio", "Log_Points_ratio", "Log_Form_ratio",
-    "Log_League_pos_ratio", "Log_Elo_ratio", "Log_Odds_ratio",
-    "Log_avg_xg_ratio", "Log_weighted_avg_xg_ratio",
-    "Log_h2h_recent", "Log_h2h_exact", 
-    "Log_home_goals_for_against_il5g_ratio", "Log_away_goals_for_against_il5g_ratio",
-    
-    "Home_goal_diff", "Away_goal_diff", "Goal_diff_diff", "Recent_h2h_diff",
-    "Exact_h2h_diff", "Elo_diff", "Odds_diff",
-    "Points_per_game_diff", "Goals_for_per_game_diff", "Goals_against_per_game_diff"
+
+    "Home_nn_prob", 
+    "Draw_nn_prob", 
+    "Away_nn_prob", 
+    "NN_prob_diff"
 ]
 
 
+# Set up a list of columns to scale in the final model pipeline
+final_model_cols_to_scale = final_model_cols + [
+    "Log_Goals_for_ratio", 
+    "Log_Goals_against_ratio", 
+    "Log_Wins_ratio", 
+    "Log_Losses_ratio", 
+    "Log_Draws_ratio", 
+    "Log_Points_ratio", 
+    "Log_League_pos_ratio",
+    "Log_home_goals_for_against_il5g_ratio", 
+    "Log_away_goals_for_against_il5g_ratio",
+    "Home_goal_diff", 
+    "Away_goal_diff", 
+    "Goal_diff_diff",
+    "Log_Form_ratio",
+    "Log_Elo_ratio", 
+    "Log_Odds_ratio",
+    "Log_avg_xg_ratio", 
+    "Log_weighted_avg_xg_ratio",
+    "Log_h2h_recent", 
+    "Log_h2h_exact", 
+    "Recent_h2h_diff", 
+    "Exact_h2h_diff", 
+    "Elo_diff", 
+    "Odds_diff",
+    "Points_per_game_diff", 
+    "Goals_for_per_game_diff", 
+    "Goals_against_per_game_diff"
+]
 
-# Create the preprocessing pipeline object
-preprocessing_pipeline = Pipeline(steps = [
+# Create the preprocessing pipeline object for the final model
+final_model_pipeline = Pipeline(steps = [
+
+    ("Select the columns we want for the final model", ColumnSelector(final_model_cols)),
     
     ("Correct Negative Points", CorrectNegPoints()),
     
@@ -405,11 +433,7 @@ preprocessing_pipeline = Pipeline(steps = [
     ("Get Home/Away Differences", GetDifferences()),
 
     ("Encode Formations", CatboostEncodeFormations()),
-
-    ("Drop features not used in modelling", DropFeatures(cols_to_drop)),
-
-    ("Standardize all columns", CustomScaler(cols_to_scale)),
     
-    ("Fill in missing values with 0", FillNA())
+    ("Standardize all columns", CustomScaler(final_model_cols_to_scale))
     
 ])
