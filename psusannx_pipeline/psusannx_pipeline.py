@@ -352,6 +352,7 @@ lineup_model_pipeline = Pipeline(steps = [
 
 # Set up a list of columns to select for the final model pipeline
 final_model_cols = [
+    "Home_formation", "Away_formation",
     "Home_form", "Away_form",
     "Home_home_form", "Away_away_form",
     "Home_rolling_form", "Away_rolling_form",
