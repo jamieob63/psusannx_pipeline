@@ -352,6 +352,7 @@ lineup_model_pipeline = Pipeline(steps = [
 
 # Set up a list of columns to select for the final model pipeline
 final_model_cols = [
+    "Result",
     "Home_formation", "Away_formation",
     "Home_form", "Away_form",
     "Home_home_form", "Away_away_form",
@@ -389,7 +390,42 @@ final_model_cols = [
 
 
 # Set up a list of columns to scale in the final model pipeline
-final_model_cols_to_scale = final_model_cols + [
+final_model_cols_to_scale = [
+
+    "Home_formation", "Away_formation",
+    "Home_form", "Away_form",
+    "Home_home_form", "Away_away_form",
+    "Home_rolling_form", "Away_rolling_form",
+    "Home_location_rolling_form", "Away_location_rolling_form",
+
+    "Home_team_played", "Away_team_played",
+    "Home_league_pos", "Away_league_pos",
+    "Home_team_wins", "Away_team_wins",
+    "Home_team_draws", "Away_team_draws",
+    "Home_team_loses", "Away_team_loses",
+    "Home_team_goals_for", "Away_team_goals_for",
+    "Home_avg_goals_il5g", "Away_avg_goals_il5g",
+    "Home_team_goals_against", "Away_team_goals_against",
+    "Home_avg_goals_against_il5g", "Away_avg_goals_against_il5g",
+    "Home_team_points", "Away_team_points",
+
+    "H2H_recent_home", "H2H_recent_draw", "H2H_recent_away", "H2H_recent_goal_diff",
+    "H2H_exact_home", "H2H_exact_draw", "H2H_exact_away", "H2H_exact_goal_diff",
+    
+    "Home_elo", "Away_elo",
+    "Home_elo_prob", "Away_elo_prob",
+    "Home_avg_xg", "Away_avg_xg",
+    "Home_weighted_avg_xg", "Away_weighted_avg_xg",
+    
+    "Home_odds",
+    "Draw_odds",
+    "Away_odds",
+
+    "Home_nn_prob", 
+    "Draw_nn_prob", 
+    "Away_nn_prob", 
+    "NN_prob_diff",
+    
     "Log_Goals_for_ratio", 
     "Log_Goals_against_ratio", 
     "Log_Wins_ratio", 
@@ -418,6 +454,11 @@ final_model_cols_to_scale = final_model_cols + [
     "Goals_against_per_game_diff"
 ]
 
+
+final_model_cols_to_drop = [
+    "Result"
+]
+
 # Create the preprocessing pipeline object for the final model
 final_model_pipeline = Pipeline(steps = [
 
@@ -434,6 +475,8 @@ final_model_pipeline = Pipeline(steps = [
     ("Get Home/Away Differences", GetDifferences()),
 
     ("Encode Formations", CatboostEncodeFormations()),
+
+    ("Drop features not used in modelling", DropFeatures(final_model_cols_to_drop)),
     
     ("Standardize all columns", CustomScaler(final_model_cols_to_scale))
     
