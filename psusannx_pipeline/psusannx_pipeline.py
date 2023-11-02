@@ -213,7 +213,7 @@ class CatboostEncodeFormations(TransformerMixin, BaseEstimator):
         X_ = X.copy()
 
         # Replace the formation columns with the encoded data
-        X_[['Home_formation', 'Away_formation']] = self.encoder.transform(X_[['Home_formation', 'Away_formation']])
+        X_[["Home_formation", "Away_formation"]] = self.encoder.transform(X_[["Home_formation", "Away_formation"]])
 
         return X_
 
@@ -293,6 +293,7 @@ class FillNA(TransformerMixin, BaseEstimator):
 # Set up a list of columns to select for the lineup model pipeline
 lineup_model_cols = [
     "Result", # Needed for catboost encoders but not for predictions
+    "Home_odds", "Draw_odds", "Away_odds",
     "Home_formation",
     "Home_GK", 
     "Home_LWB", "Home_LB", "Home_CB1", "Home_CB2", "Home_CB3", "Home_RB", "Home_RWB", 
@@ -310,6 +311,7 @@ lineup_model_cols = [
 
 # Set up a list of columns to scale for the lineup model pipeline
 lineup_model_cols_to_scale = [
+    "Home_odds", "Draw_odds", "Away_odds",
     "Home_formation",
     "Home_GK", 
     "Home_LWB", "Home_LB", "Home_CB1", "Home_CB2", "Home_CB3", "Home_RB", "Home_RWB", 
@@ -388,7 +390,6 @@ final_model_cols = [
     "NN_prob_diff"
 ]
 
-
 # Set up a list of columns to scale in the final model pipeline
 final_model_cols_to_scale = [
 
@@ -458,6 +459,7 @@ final_model_cols_to_scale = [
 final_model_cols_to_drop = [
     "Result"
 ]
+
 
 # Create the preprocessing pipeline object for the final model
 final_model_pipeline = Pipeline(steps = [
